@@ -1,0 +1,95 @@
+{% extends 'AssetFlowApp/base.html' %}
+{% load static %}
+
+{% block title %}Login - AssetFlow{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'AssetFlowApp/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card">
+        <div class="auth-logo">AssetFlow</div>
+        <div class="auth-title">Sign in to your account</div>
+
+        <form method="POST" action="{% url 'login' %}" class="needs-validation" novalidate onsubmit="return submitForm(this);">
+            {% csrf_token %}
+            
+            <div class="mb-3">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+                <div class="invalid-feedback">Please enter a valid email.</div>
+            </div>
+
+            <div class="mb-4">
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="password" class="form-label mb-0">Password</label>
+                    <a href="{% url 'forgot_password' %}" class="text-decoration-none" style="font-size: 0.85rem;">Forgot password?</a>
+                </div>
+                <div class="input-group mt-2">
+                    <input type="password" class="form-control" id="password" name="password" required>
+                    <span class="input-group-text password-toggle" onclick="togglePassword('password')">
+                        <i class="fa-regular fa-eye"></i>
+                    </span>
+                    <div class="invalid-feedback">Password is required.</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-auth w-100 text-white" id="submitBtn">
+                <span class="spinner-border spinner-border-sm d-none" id="submitSpinner" role="status" aria-hidden="true"></span>
+                <span id="submitText">Sign In</span>
+            </button>
+        </form>
+
+        <div class="auth-links">
+            <p>Don't have an account? <a href="{% url 'register' %}">Register now</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    document.getElementById('submitSpinner').classList.add('d-none');
+                    document.getElementById('submitText').innerText = 'Sign In';
+                    document.getElementById('submitBtn').disabled = false;
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+
+    function submitForm(form) {
+        if(form.checkValidity()){
+            document.getElementById('submitSpinner').classList.remove('d-none');
+            document.getElementById('submitText').innerText = 'Signing in...';
+            document.getElementById('submitBtn').disabled = true;
+            return true;
+        }
+        return false;
+    }
+
+    function togglePassword(fieldId) {
+        const field = document.getElementById(fieldId);
+        const icon = field.nextElementSibling.querySelector('i');
+        if (field.type === "password") {
+            field.type = "text";
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            field.type = "password";
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+</script>
+{% endblock %}

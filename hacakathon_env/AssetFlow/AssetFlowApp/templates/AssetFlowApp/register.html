@@ -1,0 +1,127 @@
+{% extends 'AssetFlowApp/base.html' %}
+{% load static %}
+
+{% block title %}Register - AssetFlow{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'AssetFlowApp/css/login.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-card auth-card-wide">
+        <div class="auth-logo">AssetFlow</div>
+        <div class="auth-title">Create a new account</div>
+
+        <form method="POST" action="{% url 'register' %}" class="needs-validation" novalidate onsubmit="return submitForm(this);">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="first_name" class="form-label">First Name *</label>
+                    <input type="text" class="form-control" id="first_name" name="first_name" required>
+                    <div class="invalid-feedback">Please enter your first name.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="last_name" class="form-label">Last Name *</label>
+                    <input type="text" class="form-control" id="last_name" name="last_name" required>
+                    <div class="invalid-feedback">Please enter your last name.</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="email" class="form-label">Email Address *</label>
+                    <input type="email" class="form-control" id="email" name="email" required>
+                    <div class="invalid-feedback">Please enter a valid email.</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label for="phone" class="form-label">Phone Number *</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" required pattern="[0-9+ ]{10,}">
+                    <div class="invalid-feedback">Please enter a valid phone number.</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label for="password" class="form-label">Password *</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="password" name="password" required minlength="8">
+                        <span class="input-group-text password-toggle" onclick="togglePassword('password')">
+                            <i class="fa-regular fa-eye"></i>
+                        </span>
+                    </div>
+                    <div class="invalid-feedback">Minimum 8 characters required.</div>
+                </div>
+                <div class="col-md-6 mb-4">
+                    <label for="confirm_password" class="form-label">Confirm Password *</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" id="confirm_password" name="confirm_password" required minlength="8">
+                        <span class="input-group-text password-toggle" onclick="togglePassword('confirm_password')">
+                            <i class="fa-regular fa-eye"></i>
+                        </span>
+                    </div>
+                    <div class="invalid-feedback">Passwords must match.</div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-auth w-100 text-white" id="submitBtn">
+                <span class="spinner-border spinner-border-sm d-none" id="submitSpinner" role="status" aria-hidden="true"></span>
+                <span id="submitText">Register</span>
+            </button>
+        </form>
+
+        <div class="auth-links">
+            <p>Already have an account? <a href="{% url 'login' %}">Sign in here</a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Bootstrap validation
+    (function () {
+        'use strict'
+        var forms = document.querySelectorAll('.needs-validation')
+        Array.prototype.slice.call(forms).forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!form.checkValidity()) {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    // reset button if invalid
+                    document.getElementById('submitSpinner').classList.add('d-none');
+                    document.getElementById('submitText').innerText = 'Register';
+                    document.getElementById('submitBtn').disabled = false;
+                }
+                form.classList.add('was-validated')
+            }, false)
+        })
+    })()
+
+    function submitForm(form) {
+        if(form.checkValidity()){
+            // Add loading state
+            document.getElementById('submitSpinner').classList.remove('d-none');
+            document.getElementById('submitText').innerText = 'Processing...';
+            document.getElementById('submitBtn').disabled = true;
+            return true;
+        }
+        return false;
+    }
+
+    function togglePassword(fieldId) {
+        const field = document.getElementById(fieldId);
+        const icon = field.nextElementSibling.querySelector('i');
+        if (field.type === "password") {
+            field.type = "text";
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        } else {
+            field.type = "password";
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+</script>
+{% endblock %}

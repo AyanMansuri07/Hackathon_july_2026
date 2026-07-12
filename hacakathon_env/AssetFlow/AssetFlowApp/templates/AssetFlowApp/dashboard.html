@@ -1,0 +1,28 @@
+{% extends 'AssetFlowApp/base.html' %}
+{% block title %}Dashboard - AssetFlow{% endblock %}
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white text-center">
+                    <h4 class="mb-0">AssetFlow Dashboard</h4>
+                </div>
+                <div class="card-body text-center p-5">
+                    {% if user.is_authenticated %}
+                        <h2 class="mb-4">Welcome, {{ user.first_name }} {{ user.last_name }}!</h2>
+                        <p class="lead">You have successfully logged in via Email: <strong>{{ user.email }}</strong></p>
+                        
+                        <div class="mt-5">
+                            <a href="{% url 'logout' %}" class="btn btn-danger px-4">Logout</a>
+                        </div>
+                    {% else %}
+                        <h2>Not Logged In</h2>
+                        <a href="{% url 'login' %}" class="btn btn-primary mt-3">Go to Login</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

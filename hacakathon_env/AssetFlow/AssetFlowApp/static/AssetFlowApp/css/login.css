@@ -1,0 +1,90 @@
+/* Professional ERP Authentication Styling */
+.auth-wrapper {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f4f6f9;
+}
+
+.auth-card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    background-color: #ffffff;
+    padding: 2rem;
+    width: 100%;
+    max-width: 450px;
+}
+
+.auth-card-wide {
+    max-width: 600px;
+}
+
+.auth-logo {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #2c3e50;
+    text-align: center;
+    margin-bottom: 0.5rem;
+}
+
+.auth-title {
+    font-size: 1.1rem;
+    color: #6c757d;
+    text-align: center;
+    margin-bottom: 2rem;
+    font-weight: 500;
+}
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+.form-control {
+    border-radius: 6px;
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
+    border: 1px solid #ced4da;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn-auth {
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    border-radius: 6px;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+    transition: all 0.2s ease-in-out;
+}
+
+.btn-auth:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.auth-links {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.auth-links a {
+    text-decoration: none;
+    color: #0d6efd;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+.password-toggle {
+    cursor: pointer;
+}
