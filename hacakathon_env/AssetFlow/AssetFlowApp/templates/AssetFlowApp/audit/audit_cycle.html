@@ -1,0 +1,73 @@
+{% extends 'AssetFlowApp/base.html' %}
+{% block page_title %}Audits{% endblock %}
+{% block content %}
+<div class="card dashboard-card">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h5 class="fw-bold m-0">Audit Cycles</h5>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="fa-solid fa-play me-2"></i>Start Audit</button>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-enterprise table-hover">
+            <thead>
+                <tr>
+                    <th>Audit Name</th>
+                    <th>Started By</th>
+                    <th>Start Date</th>
+                    <th>Status</th>
+                    <th>End Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in audits %}
+                <tr>
+                    <td>{{ a.audit_name }}</td>
+                    <td>{{ a.started_by.email }}</td>
+                    <td>{{ a.start_date|date:"Y-m-d" }}</td>
+                    <td>
+                        <span class="badge {% if a.status == 'IN_PROGRESS' %}bg-warning{% else %}bg-success{% endif %}">{{ a.status }}</span>
+                    </td>
+                    <td>{{ a.end_date|date:"Y-m-d"|default:"-" }}</td>
+                    <td>
+                        {% if a.status == 'IN_PROGRESS' %}
+                        <form method="POST" style="display:inline;">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="complete">
+                            <input type="hidden" name="audit_id" value="{{ a.id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-success">Complete Audit</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Add Modal -->
+<div class="modal fade" id="addModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add">
+        <div class="modal-header">
+          <h5 class="modal-title">Start New Audit</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+              <label>Audit Name</label>
+              <input type="text" name="audit_name" class="form-control" required placeholder="e.g. Q3 Annual Asset Audit">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          <button type="submit" class="btn btn-primary">Start Audit</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
