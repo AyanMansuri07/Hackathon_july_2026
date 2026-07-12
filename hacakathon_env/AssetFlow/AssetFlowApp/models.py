@@ -202,6 +202,7 @@ class Audit(models.Model):
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=(('IN_PROGRESS', 'In Progress'), ('COMPLETED', 'Completed')), default='IN_PROGRESS')
+    verified_assets = models.TextField(blank=True, null=True) # Comma-separated asset IDs
 
     class Meta:
         db_table = "audit"

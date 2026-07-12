@@ -4,7 +4,11 @@
 <div class="card dashboard-card">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="fw-bold m-0">Asset List</h5>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="fa-solid fa-plus me-2"></i>Add Asset</button>
+        <div>
+            <input type="text" id="searchInput" class="form-control d-inline-block w-auto me-2" placeholder="Search assets..." onkeyup="filterTable()">
+            <a href="{% url 'export_assets' %}" class="btn btn-outline-info me-2"><i class="fa-solid fa-download"></i> Export</a>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="fa-solid fa-plus me-2"></i>Add Asset</button>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-enterprise table-hover">
@@ -35,9 +39,88 @@
                         </span>
                     </td>
                     <td>
+                        <button class="btn btn-sm btn-outline-info me-1" data-bs-toggle="modal" data-bs-target="#qrModal{{ a.id }}" title="View QR & Image"><i class="fa-solid fa-qrcode"></i></button>
+                        <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#editModal{{ a.id }}" title="Edit Asset"><i class="fa-solid fa-pen"></i></button>
                         <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#deleteModal{{ a.id }}"><i class="fa-solid fa-trash"></i></button>
                     </td>
                 </tr>
+                
+                <!-- QR & Image Modal -->
+                <div class="modal fade" id="qrModal{{ a.id }}" tabindex="-1">
+                  <div class="modal-dialog">
+                    <div class="modal-content text-center">
+                        <div class="modal-header">
+                          <h5 class="modal-title">{{ a.asset_name }} - {{ a.serial_number }}</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            {% if a.asset_image %}
+                            <img src="{{ a.asset_image.url }}" class="img-fluid mb-3" style="max-height: 200px;" alt="Asset Image">
+                            {% else %}
+                            <div class="p-4 bg-light text-muted mb-3">No Image Available</div>
+                            {% endif %}
+                            
+                            <h6>QR Code: {{ a.qr_code|default:"Not Generated" }}</h6>
+                            {% if a.qr_code %}
+                            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ a.qr_code }}" alt="QR Code">
+                            {% endif %}
+                        </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Edit Modal -->
+                <div class="modal fade" id="editModal{{ a.id }}" tabindex="-1">
+                  <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                      <form method="POST" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="edit">
+                        <input type="hidden" name="asset_id" value="{{ a.id }}">
+                        <div class="modal-header">
+                          <h5 class="modal-title">Edit Asset - {{ a.serial_number }}</h5>
+                          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                          <div class="row">
+                              <div class="col-md-6 mb-3"><label>Asset Name</label><input type="text" name="asset_name" class="form-control" value="{{ a.asset_name }}" required></div>
+                              <div class="col-md-6 mb-3"><label>Serial Number</label><input type="text" name="serial_number" class="form-control" value="{{ a.serial_number }}" required></div>
+                              <div class="col-md-6 mb-3">
+                                  <label>Category</label>
+                                  <select name="category" class="form-select" required>
+                                      {% for c in categories %}<option value="{{ c.id }}" {% if a.category.id == c.id %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+                                  </select>
+                              </div>
+                              <div class="col-md-6 mb-3">
+                                  <label>Department (Optional)</label>
+                                  <select name="department" class="form-select">
+                                      <option value="">-- None --</option>
+                                      {% for d in departments %}<option value="{{ d.id }}" {% if a.department and a.department.id == d.id %}selected{% endif %}>{{ d.department_name }}</option>{% endfor %}
+                                  </select>
+                              </div>
+                              <div class="col-md-6 mb-3">
+                                  <label>Status</label>
+                                  <select name="status" class="form-select">
+                                      <option value="AVAILABLE" {% if a.status == 'AVAILABLE' %}selected{% endif %}>Available</option>
+                                      <option value="ALLOCATED" {% if a.status == 'ALLOCATED' %}selected{% endif %}>Allocated</option>
+                                      <option value="MAINTENANCE" {% if a.status == 'MAINTENANCE' %}selected{% endif %}>Maintenance</option>
+                                      <option value="INACTIVE" {% if a.status == 'INACTIVE' %}selected{% endif %}>Inactive</option>
+                                  </select>
+                              </div>
+                              <div class="col-md-6 mb-3">
+                                  <label>Update Asset Image</label>
+                                  <input type="file" name="asset_image" class="form-control" accept="image/*">
+                              </div>
+                          </div>
+                        </div>
+                        <div class="modal-footer">
+                          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                          <button type="submit" class="btn btn-primary">Save Changes</button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
                 <!-- Delete Modal -->
                 <div class="modal fade" id="deleteModal{{ a.id }}" tabindex="-1">
                   <div class="modal-dialog">
@@ -71,7 +154,7 @@
 <div class="modal fade" id="addModal" tabindex="-1">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
-      <form method="POST">
+      <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="hidden" name="action" value="add">
         <div class="modal-header">
@@ -104,6 +187,14 @@
                       <option value="INACTIVE">Inactive</option>
                   </select>
               </div>
+              <div class="col-md-6 mb-3">
+                  <label>Asset Image (Optional)</label>
+                  <input type="file" name="asset_image" class="form-control" accept="image/*">
+              </div>
+              <div class="col-md-6 mb-3">
+                  <label>QR Code Data (Leave blank to auto-generate)</label>
+                  <input type="text" name="qr_code" class="form-control">
+              </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -114,4 +205,27 @@
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function filterTable() {
+    let input = document.getElementById("searchInput");
+    let filter = input.value.toLowerCase();
+    let table = document.querySelector(".table-enterprise");
+    let trs = table.getElementsByTagName("tr");
+    for (let i = 1; i < trs.length; i++) {
+        let tds = trs[i].getElementsByTagName("td");
+        let display = false;
+        for (let j = 0; j < tds.length; j++) {
+            if (tds[j] && j < 5) {
+                if (tds[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
+                    display = true;
+                    break;
+                }
+            }
+        }
+        trs[i].style.display = display ? "" : "none";
+    }
+}
+</script>
 {% endblock %}

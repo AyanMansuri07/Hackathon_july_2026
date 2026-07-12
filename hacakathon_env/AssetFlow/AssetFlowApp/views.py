@@ -113,14 +113,24 @@ def verify_otp(request):
 
     # Check if OTP exists in session
     if 'otp' not in request.session:
-        return redirect("register")
+        return redirect("login")
 
     if request.method == "POST":
 
         uotp = request.POST.get("otp")
 
         if str(uotp) == str(request.session.get("otp")):
+            
+            # Check if this is a password reset flow
+            if request.session.get("otp_context") == "reset":
+                # OTP is verified, now allow password reset
+                request.session['otp_verified'] = True
+                return render(request, "AssetFlowApp/verify_otp.html", {
+                    "show_reset_form": True,
+                    "s_msg": "OTP Verified. Please enter your new password."
+                })
 
+            # Otherwise, this is a registration flow
             user = User.objects.create(
                 email=request.session['email'],
                 password=request.session['password'],
@@ -156,6 +166,56 @@ def verify_otp(request):
 
     return render(request, "AssetFlowApp/verify_otp.html")
 
+
+def forgot_password(request):
+    if request.method == "POST":
+        email = request.POST.get("email")
+        if User.objects.filter(email=email).exists():
+            otp = random.randint(100000, 999999)
+            request.session['otp'] = otp
+            request.session['email'] = email
+            request.session['otp_context'] = 'reset'
+            
+            # Send OTP Email
+            try:
+                send_mail(
+                    subject="AssetFlow ERP - Password Reset",
+                    message=f"Hello,\n\nYour OTP for password reset is: {otp}\n\nDo not share this with anyone.",
+                    from_email=settings.EMAIL_HOST_USER,
+                    recipient_list=[email],
+                    fail_silently=False
+                )
+            except:
+                pass # Fail silently for hackathon if email is not configured perfectly
+                
+            return redirect("verify_otp")
+        else:
+            return render(request, "AssetFlowApp/login.html", {"e_msg": "Email not found."})
+    return redirect("login")
+
+def reset_password(request):
+    if request.method == "POST":
+        if not request.session.get('otp_verified'):
+            return redirect("login")
+            
+        password = request.POST.get("password")
+        confirm_password = request.POST.get("confirm_password")
+        
+        if password != confirm_password:
+            return render(request, "AssetFlowApp/verify_otp.html", {
+                "show_reset_form": True,
+                "e_msg": "Passwords do not match."
+            })
+            
+        email = request.session.get("email")
+        user = User.objects.get(email=email)
+        user.password = password
+        user.save()
+        
+        request.session.flush()
+        return render(request, "AssetFlowApp/login.html", {"s_msg": "Password reset successful. Please Login."})
+        
+    return redirect("login")
 
 def login(request):
 
@@ -305,44 +365,62 @@ def admin_dashboard(request):
 
 
 def asset_manager_dashboard(request):
-
-    if 'uid' not in request.session:
-        return redirect("login")
-
+    if 'uid' not in request.session: return redirect("login")
     user = User.objects.get(id=request.session['uid'])
-
-    return render(request, "AssetFlowApp/asset_manager_dashboard.html", {"user": user})
+    
+    total_assets = Asset.objects.count()
+    available_assets = Asset.objects.filter(status='AVAILABLE').count()
+    maintenance_requests = MaintenanceRequest.objects.filter(status__in=['OPEN', 'IN_PROGRESS']).count()
+    pending_bookings = Booking.objects.filter(status='PENDING').count()
+    recent_activities = ActivityLog.objects.filter(module__in=['Assets', 'Maintenance', 'Booking', 'Allocation']).order_by('-timestamp')[:5]
+    
+    context = {
+        "user": user,
+        "total_assets": total_assets,
+        "available_assets": available_assets,
+        "maintenance_requests": maintenance_requests,
+        "pending_bookings": pending_bookings,
+        "recent_activities": recent_activities,
+    }
+    return render(request, "AssetFlowApp/asset_manager_dashboard.html", context)
 
 
 def department_head_dashboard(request):
-
-    if 'uid' not in request.session:
-        return redirect("login")
-
+    if 'uid' not in request.session: return redirect("login")
     user = User.objects.get(id=request.session['uid'])
-
-    return render(request, "AssetFlowApp/department_head_dashboard.html", {"user": user})
-
-
+    employee = Employee.objects.get(user=user)
+    
+    dept = employee.department
+    dept_assets = Asset.objects.filter(department=dept).count() if dept else 0
+    dept_employees = Employee.objects.filter(department=dept).count() if dept else 0
+    recent_activities = ActivityLog.objects.all().order_by('-timestamp')[:5]
+    
+    context = {
+        "user": user,
+        "employee": employee,
+        "dept_assets": dept_assets,
+        "dept_employees": dept_employees,
+        "recent_activities": recent_activities,
+    }
+    return render(request, "AssetFlowApp/department_head_dashboard.html", context)
 
 
 def employee_dashboard(request):
-
-    if 'uid' not in request.session:
-
-        return redirect("login")
-
+    if 'uid' not in request.session: return redirect("login")
     user = User.objects.get(id=request.session['uid'])
-
     employee = Employee.objects.get(user=user)
 
+    my_allocations = Allocation.objects.filter(employee=employee, status='ACTIVE')
+    my_bookings = Booking.objects.filter(employee=employee).order_by('-created_at')[:5]
+    my_maintenance = MaintenanceRequest.objects.filter(reported_by=employee).order_by('-created_at')[:5]
+
     context = {
-
         "user": user,
-        "employee": employee
-
+        "employee": employee,
+        "my_allocations": my_allocations,
+        "my_bookings": my_bookings,
+        "my_maintenance": my_maintenance,
     }
-
     return render(request, "AssetFlowApp/employee_dashboard.html", context)
 
 from django.contrib import messages
@@ -376,9 +454,12 @@ def manage_departments(request):
         elif action == 'delete':
             dept_id = request.POST.get('department_id')
             dept = Department.objects.get(id=dept_id)
-            dept.delete()
-            ActivityLog.objects.create(user=user, action=f"Deleted Department: {dept.department_name}", module="Organization")
-            messages.success(request, "Department deleted successfully!")
+            if dept.employees.exists():
+                messages.error(request, f"Cannot delete '{dept.department_name}' because it has active employees.")
+            else:
+                dept.delete()
+                ActivityLog.objects.create(user=user, action=f"Deleted Department: {dept.department_name}", module="Organization")
+                messages.success(request, "Department deleted successfully!")
         return redirect('manage_departments')
         
     departments = Department.objects.all()
@@ -394,14 +475,18 @@ def manage_employees(request):
         action = request.POST.get('action')
         if action == 'add':
             email = request.POST.get('email')
+            employee_code = request.POST.get('employee_code')
             if User.objects.filter(email=email).exists():
                 messages.error(request, "User with this email already exists!")
+                return redirect('manage_employees')
+            if Employee.objects.filter(employee_code=employee_code).exists():
+                messages.error(request, "Employee with this code already exists!")
                 return redirect('manage_employees')
             
             new_user = User.objects.create(email=email, password=request.POST.get('password'), role=request.POST.get('role'))
             dept = Department.objects.get(id=request.POST.get('department'))
             Employee.objects.create(
-                user=new_user, department=dept, employee_code=request.POST.get('employee_code'),
+                user=new_user, department=dept, employee_code=employee_code,
                 first_name=request.POST.get('first_name'), last_name=request.POST.get('last_name'),
                 contact_no=request.POST.get('contact_no')
             )
@@ -426,9 +511,12 @@ def manage_employees(request):
         elif action == 'delete':
             emp_id = request.POST.get('employee_id')
             emp = Employee.objects.get(id=emp_id)
-            emp.user.delete() # Deletes employee via cascade
-            ActivityLog.objects.create(user=user, action=f"Deleted Employee: {emp_id}", module="Organization")
-            messages.success(request, "Employee deleted successfully!")
+            if emp.allocations.filter(status='ACTIVE').exists():
+                messages.error(request, "Cannot delete employee. They currently have active asset allocations.")
+            else:
+                emp.user.delete() # Deletes employee via cascade
+                ActivityLog.objects.create(user=user, action=f"Deleted Employee: {emp.first_name}", module="Organization")
+                messages.success(request, "Employee deleted successfully!")
         return redirect('manage_employees')
         
     employees = Employee.objects.all()
@@ -471,12 +559,19 @@ def manage_assets(request):
     if request.method == "POST":
         action = request.POST.get('action')
         if action == 'add':
+            import uuid
+            qr_val = request.POST.get('qr_code')
+            if not qr_val:
+                qr_val = str(uuid.uuid4())[:8].upper()
+            
             Asset.objects.create(
                 asset_name=request.POST.get('asset_name'),
                 category=AssetCategory.objects.get(id=request.POST.get('category')),
                 department=Department.objects.get(id=request.POST.get('department')) if request.POST.get('department') else None,
                 serial_number=request.POST.get('serial_number'),
-                status=request.POST.get('status')
+                status=request.POST.get('status'),
+                qr_code=qr_val,
+                asset_image=request.FILES.get('asset_image')
             )
             ActivityLog.objects.create(user=user, action=f"Added Asset: {request.POST.get('asset_name')}", module="Assets")
             messages.success(request, "Asset added successfully!")
@@ -488,6 +583,10 @@ def manage_assets(request):
                 asset.department = Department.objects.get(id=request.POST.get('department'))
             asset.serial_number = request.POST.get('serial_number')
             asset.status = request.POST.get('status')
+            
+            if request.FILES.get('asset_image'):
+                asset.asset_image = request.FILES.get('asset_image')
+                
             asset.save()
             ActivityLog.objects.create(user=user, action=f"Updated Asset: {asset.asset_name}", module="Assets")
             messages.success(request, "Asset updated successfully!")
@@ -533,6 +632,19 @@ def allocate_asset(request):
             alloc.asset.save()
             ActivityLog.objects.create(user=user, action=f"Returned Asset {alloc.asset.asset_name}", module="Allocation")
             messages.success(request, "Asset returned successfully!")
+        elif action == 'transfer':
+            alloc = Allocation.objects.get(id=request.POST.get('allocation_id'))
+            new_emp = Employee.objects.get(id=request.POST.get('new_employee'))
+            
+            # Close old allocation
+            alloc.status = 'RETURNED'
+            alloc.return_date = timezone.now()
+            alloc.save()
+            
+            # Create new allocation
+            Allocation.objects.create(asset=alloc.asset, employee=new_emp, allocated_by=user)
+            ActivityLog.objects.create(user=user, action=f"Transferred Asset {alloc.asset.asset_name} to {new_emp.first_name}", module="Allocation")
+            messages.success(request, "Asset transferred successfully!")
         return redirect('allocate_asset')
         
     allocations = Allocation.objects.all().order_by('-allocated_date')
@@ -548,14 +660,28 @@ def manage_bookings(request):
     if request.method == "POST":
         action = request.POST.get('action')
         if action == 'add':
-            Booking.objects.create(
-                asset=Asset.objects.get(id=request.POST.get('asset')),
-                employee=Employee.objects.get(id=request.POST.get('employee')),
-                start_date=request.POST.get('start_date'),
-                end_date=request.POST.get('end_date')
+            asset_id = request.POST.get('asset')
+            s_date = request.POST.get('start_date')
+            e_date = request.POST.get('end_date')
+            
+            overlaps = Booking.objects.filter(
+                asset_id=asset_id,
+                status__in=['APPROVED', 'PENDING'],
+                start_date__lte=e_date,
+                end_date__gte=s_date
             )
-            ActivityLog.objects.create(user=user, action=f"Created Booking Request", module="Booking")
-            messages.success(request, "Booking requested successfully!")
+            
+            if overlaps.exists():
+                messages.error(request, "Asset is already booked or pending for the selected dates.")
+            else:
+                Booking.objects.create(
+                    asset=Asset.objects.get(id=asset_id),
+                    employee=Employee.objects.get(id=request.POST.get('employee')),
+                    start_date=s_date,
+                    end_date=e_date
+                )
+                ActivityLog.objects.create(user=user, action=f"Created Booking Request", module="Booking")
+                messages.success(request, "Booking requested successfully!")
         elif action == 'approve':
             b = Booking.objects.get(id=request.POST.get('booking_id'))
             b.status = 'APPROVED'
@@ -598,6 +724,20 @@ def manage_maintenance(request):
             m.asset.status = 'AVAILABLE'
             m.asset.save()
             messages.success(request, "Maintenance resolved!")
+        elif action == 'update_status':
+            m = MaintenanceRequest.objects.get(id=request.POST.get('request_id'))
+            new_status = request.POST.get('status')
+            m.status = new_status
+            if new_status in ['RESOLVED', 'REJECTED']:
+                m.resolved_by = user
+                m.resolved_at = timezone.now()
+                if new_status == 'RESOLVED':
+                    m.asset.status = 'AVAILABLE'
+                elif new_status == 'REJECTED':
+                    m.asset.status = 'AVAILABLE' # Assume it's available if request is rejected
+                m.asset.save()
+            m.save()
+            messages.success(request, "Maintenance status updated!")
         return redirect('manage_maintenance')
         
     requests = MaintenanceRequest.objects.all().order_by('-created_at')
@@ -622,7 +762,68 @@ def manage_audits(request):
             a.end_date = timezone.now()
             a.save()
             messages.success(request, "Audit completed!")
+        elif action == 'verify_asset':
+            a = Audit.objects.get(id=request.POST.get('audit_id'))
+            asset_id = request.POST.get('asset_id')
+            if a.verified_assets:
+                verified_list = a.verified_assets.split(',')
+                if asset_id not in verified_list:
+                    verified_list.append(asset_id)
+                    a.verified_assets = ','.join(verified_list)
+            else:
+                a.verified_assets = str(asset_id)
+            a.save()
+            messages.success(request, f"Asset Verified in Audit: {a.audit_name}")
         return redirect('manage_audits')
         
     audits = Audit.objects.all().order_by('-start_date')
-    return render(request, "AssetFlowApp/audit/audit_cycle.html", {"user": user, "audits": audits})
+    
+    # We will pass assets to the template for verification
+    assets = Asset.objects.all()
+    
+    return render(request, "AssetFlowApp/audit/audit_cycle.html", {"user": user, "audits": audits, "assets": assets})
+
+import csv
+from django.http import HttpResponse
+
+def export_audit_report(request, audit_id):
+    if 'uid' not in request.session: return redirect("login")
+    
+    audit = Audit.objects.get(id=audit_id)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="audit_report_{audit.audit_name}.csv"'
+    
+    writer = csv.writer(response)
+    writer.writerow(['Audit Name', 'Started By', 'Start Date', 'End Date', 'Status'])
+    writer.writerow([audit.audit_name, audit.started_by.email if audit.started_by else '', audit.start_date, audit.end_date, audit.status])
+    writer.writerow([])
+    writer.writerow(['Asset Name', 'Serial Number', 'Category', 'Verification Status'])
+    
+    all_assets = Asset.objects.all()
+    verified_list = audit.verified_assets.split(',') if audit.verified_assets else []
+    
+    for asset in all_assets:
+        status = 'Verified' if str(asset.id) in verified_list else 'Missing'
+        writer.writerow([asset.asset_name, asset.serial_number, asset.category.name, status])
+        
+    return response
+
+def export_assets(request):
+    if 'uid' not in request.session: return redirect("login")
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="assets_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Serial Number', 'Name', 'Category', 'Department', 'Status', 'Added On'])
+    for a in Asset.objects.all():
+        writer.writerow([a.serial_number, a.asset_name, a.category.name, a.department.department_name if a.department else '-', a.status, a.created_at])
+    return response
+
+def export_employees(request):
+    if 'uid' not in request.session: return redirect("login")
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = 'attachment; filename="employees_export.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['Employee Code', 'Name', 'Email', 'Department', 'Role', 'Status'])
+    for e in Employee.objects.all():
+        writer.writerow([e.employee_code, f"{e.first_name} {e.last_name}", e.user.email, e.department.department_name if e.department else '-', e.user.role, e.user.status])
+    return response

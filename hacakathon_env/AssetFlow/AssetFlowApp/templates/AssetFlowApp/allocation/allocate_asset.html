@@ -36,6 +36,40 @@
                             <input type="hidden" name="allocation_id" value="{{ a.id }}">
                             <button type="submit" class="btn btn-sm btn-outline-success">Return</button>
                         </form>
+                        <button class="btn btn-sm btn-outline-warning ms-1" data-bs-toggle="modal" data-bs-target="#transferModal{{ a.id }}">Transfer</button>
+                        
+                        <!-- Transfer Modal -->
+                        <div class="modal fade" id="transferModal{{ a.id }}" tabindex="-1">
+                          <div class="modal-dialog">
+                            <div class="modal-content text-start">
+                              <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="transfer">
+                                <input type="hidden" name="allocation_id" value="{{ a.id }}">
+                                <div class="modal-header">
+                                  <h5 class="modal-title">Transfer Asset: {{ a.asset.asset_name }}</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                  <div class="mb-3">
+                                      <label>Transfer To Employee</label>
+                                      <select name="new_employee" class="form-select" required>
+                                          {% for emp in employees %}
+                                            {% if emp.id != a.employee.id %}
+                                                <option value="{{ emp.id }}">{{ emp.first_name }} {{ emp.last_name }} ({{ emp.employee_code }})</option>
+                                            {% endif %}
+                                          {% endfor %}
+                                      </select>
+                                  </div>
+                                </div>
+                                <div class="modal-footer">
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                  <button type="submit" class="btn btn-primary">Transfer</button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
                         {% endif %}
                     </td>
                 </tr>

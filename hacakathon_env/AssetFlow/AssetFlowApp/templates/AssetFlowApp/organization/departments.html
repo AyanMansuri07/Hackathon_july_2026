@@ -4,7 +4,10 @@
 <div class="card dashboard-card">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h5 class="fw-bold m-0">Department List</h5>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="fa-solid fa-plus me-2"></i>Add Department</button>
+        <div>
+            <input type="text" id="searchInput" class="form-control d-inline-block w-auto me-2" placeholder="Search departments..." onkeyup="filterTable()">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addModal"><i class="fa-solid fa-plus me-2"></i>Add Department</button>
+        </div>
     </div>
     <div class="table-responsive">
         <table class="table table-enterprise table-hover">
@@ -127,4 +130,27 @@
     </div>
   </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function filterTable() {
+    let input = document.getElementById("searchInput");
+    let filter = input.value.toLowerCase();
+    let table = document.querySelector(".table-enterprise");
+    let trs = table.getElementsByTagName("tr");
+    for (let i = 1; i < trs.length; i++) {
+        let tds = trs[i].getElementsByTagName("td");
+        let display = false;
+        for (let j = 0; j < tds.length; j++) {
+            if (tds[j]) {
+                if (tds[j].innerHTML.toLowerCase().indexOf(filter) > -1) {
+                    display = true;
+                    break;
+                }
+            }
+        }
+        trs[i].style.display = display ? "" : "none";
+    }
+}
+</script>
 {% endblock %}

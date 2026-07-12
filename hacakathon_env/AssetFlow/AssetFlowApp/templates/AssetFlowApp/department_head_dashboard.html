@@ -1,74 +1,44 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-
-<meta charset="UTF-8">
-
-<title>Department Head Dashboard</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-
-</head>
-
-<body class="bg-light">
-
-<nav class="navbar navbar-dark bg-primary">
-
-<div class="container">
-
-<a class="navbar-brand">
-
-AssetFlow ERP - Department Head
-
-</a>
-
-<a href="{% url 'logout' %}" class="btn btn-danger">
-
-Logout
-
-</a>
-
+{% extends 'AssetFlowApp/base.html' %}
+{% block page_title %}Department Head Dashboard{% endblock %}
+{% block content %}
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card dashboard-card text-center p-4">
+            <h3 class="text-primary">{{ dept_assets }}</h3>
+            <span class="text-muted">Department Assets</span>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card dashboard-card text-center p-4">
+            <h3 class="text-success">{{ dept_employees }}</h3>
+            <span class="text-muted">Department Employees</span>
+        </div>
+    </div>
 </div>
 
-</nav>
-
-<div class="container mt-5">
-
-<div class="card shadow">
-
-<div class="card-body">
-
-<h2>Welcome Department Head</h2>
-
-<hr>
-
-<p><b>Email :</b> {{ user.email }}</p>
-
-<p><b>Role :</b> {{ user.role }}</p>
-
-<h4>Responsibilities</h4>
-
-<ul>
-
-<li>Approve Asset Requests</li>
-
-<li>Manage Employees</li>
-
-<li>Department Reports</li>
-
-<li>Department Assets</li>
-
-<li>Maintenance Approval</li>
-
-</ul>
-
+<div class="card dashboard-card">
+    <h5 class="fw-bold mb-4">Recent Organization Activities</h5>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Action</th>
+                    <th>Module</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for act in recent_activities %}
+                <tr>
+                    <td>{{ act.action }}</td>
+                    <td><span class="badge bg-secondary">{{ act.module }}</span></td>
+                    <td>{{ act.timestamp|date:"M d, Y h:i A" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="3">No recent activities.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
-
-</div>
-
-</div>
-
-</body>
-
-</html>
+{% endblock %}

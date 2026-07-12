@@ -30,12 +30,46 @@
                     <td>{{ a.end_date|date:"Y-m-d"|default:"-" }}</td>
                     <td>
                         {% if a.status == 'IN_PROGRESS' %}
+                        <button class="btn btn-sm btn-outline-primary me-1" data-bs-toggle="modal" data-bs-target="#verifyModal{{ a.id }}">Verify Asset</button>
                         <form method="POST" style="display:inline;">
                             {% csrf_token %}
                             <input type="hidden" name="action" value="complete">
                             <input type="hidden" name="audit_id" value="{{ a.id }}">
                             <button type="submit" class="btn btn-sm btn-outline-success">Complete Audit</button>
                         </form>
+                        {% endif %}
+                        <a href="{% url 'export_audit_report' a.id %}" class="btn btn-sm btn-outline-info ms-1"><i class="fa-solid fa-download"></i> Export</a>
+                        
+                        <!-- Verify Modal -->
+                        <div class="modal fade" id="verifyModal{{ a.id }}" tabindex="-1">
+                          <div class="modal-dialog">
+                            <div class="modal-content text-start">
+                              <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="action" value="verify_asset">
+                                <input type="hidden" name="audit_id" value="{{ a.id }}">
+                                <div class="modal-header">
+                                  <h5 class="modal-title">Verify Asset for {{ a.audit_name }}</h5>
+                                  <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                  <div class="mb-3">
+                                      <label>Select Asset</label>
+                                      <select name="asset_id" class="form-select" required>
+                                          {% for asset in assets %}
+                                            <option value="{{ asset.id }}">{{ asset.asset_name }} ({{ asset.serial_number }})</option>
+                                          {% endfor %}
+                                      </select>
+                                  </div>
+                                </div>
+                                <div class="modal-footer">
+                                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                  <button type="submit" class="btn btn-primary">Mark Verified</button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
                         {% endif %}
                     </td>
                 </tr>

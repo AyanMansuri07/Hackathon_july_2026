@@ -23,7 +23,15 @@
                 </div>
                 <nav class="sidebar-nav">
                     <div class="nav-item">
-                        <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}">
+                        {% if user.role == 'ADMIN' %}
+                        <a href="{% url 'admin_dashboard' %}" class="nav-link">
+                        {% elif user.role == 'ASSET_MANAGER' %}
+                        <a href="{% url 'asset_manager_dashboard' %}" class="nav-link">
+                        {% elif user.role == 'DEPARTMENT_HEAD' %}
+                        <a href="{% url 'department_head_dashboard' %}" class="nav-link">
+                        {% else %}
+                        <a href="{% url 'employee_dashboard' %}" class="nav-link">
+                        {% endif %}
                             <i class="fa-solid fa-chart-line"></i> <span>Dashboard</span>
                         </a>
                     </div>

@@ -9,6 +9,10 @@ urlpatterns=[
 
     path('verify-otp/',views.verify_otp,name="verify_otp"),
 
+    path('forgot-password/', views.forgot_password, name="forgot_password"),
+
+    path('reset-password/', views.reset_password, name="reset_password"),
+
     path('logout/',views.logout,name="logout"),
 
     path("dashboard/", views.dashboard, name="dashboard"),
@@ -32,5 +36,8 @@ urlpatterns=[
     path("bookings/", views.manage_bookings, name="manage_bookings"),
     path("maintenance/", views.manage_maintenance, name="manage_maintenance"),
     path("audits/", views.manage_audits, name="manage_audits"),
+    path("audits/<int:audit_id>/export/", views.export_audit_report, name="export_audit_report"),
+    path("export/assets/", views.export_assets, name="export_assets"),
+    path("export/employees/", views.export_employees, name="export_employees"),
 
 ]
